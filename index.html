@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>長輩伸展運動與身體AI骨架系統</title>
+    <title>長輩智慧伸展運動與視訊內嵌系統</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- MediaPipe Pose -->
@@ -11,130 +11,134 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans antialiased min-h-screen">
+<body class="bg-gray-900 text-gray-100 font-sans antialiased min-h-screen flex flex-col items-center justify-center p-2 sm:p-4">
 
-    <div class="max-w-6xl mx-auto p-4 sm:p-6 flex flex-col justify-between min-h-screen">
+    <!-- 主容器：極致放大，讓視訊與所有操作介面完美整合在同一個大畫面內 -->
+    <div class="max-w-6xl w-full flex flex-col gap-3">
         
-        <!-- 頂部導航列與精簡日曆查詢器 -->
-        <div class="bg-white rounded-2xl shadow-md p-4 mb-4 flex flex-wrap justify-between items-center gap-4 border border-gray-200">
-            <div class="flex items-center gap-3">
-                <span class="font-black text-gray-800 text-lg sm:text-xl">🌟 長輩伸展運動（大視訊 AI 身體骨架版）</span>
+        <!-- 頂部列：狀態與歷史紀錄查詢 -->
+        <div class="flex flex-wrap justify-between items-center bg-gray-800/90 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-gray-700 shadow-lg">
+            <div class="flex items-center gap-2">
+                <span class="font-black text-emerald-400 text-sm sm:text-base">🌟 長輩智慧伸展運動（視訊內嵌整合版）</span>
+                <span id="align-status-badge" class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full font-bold">請先開啟鏡頭</span>
             </div>
             
-            <!-- 精簡日期查詢區 -->
-            <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-200">
-                <label for="search-date" class="text-xs font-bold text-gray-600">📅 查詢歷史紀錄：</label>
-                <input type="date" id="search-date" onchange="queryDateRecord()" class="bg-white border border-gray-300 rounded-lg text-xs p-1.5 font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                <button onclick="queryDateRecord()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">
+            <div class="flex items-center gap-2">
+                <label for="search-date" class="text-xs font-bold text-gray-400">📅 查詢紀錄：</label>
+                <input type="date" id="search-date" onchange="queryDateRecord()" class="bg-gray-700 border border-gray-600 rounded-lg text-xs p-1 font-bold text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <button onclick="queryDateRecord()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1 px-3 rounded-lg transition">
                     查詢
                 </button>
             </div>
         </div>
 
-        <!-- 核心左右雙欄：放大的即時視訊與 AI 身體骨架 -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 flex-1">
+        <!-- 視訊與全部內嵌控制介面的主畫面容器 -->
+        <div id="video-container" class="relative w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden shadow-2xl border-2 border-gray-700 flex items-center justify-center">
             
-            <!-- 左側：大幅放大的長輩視訊與身體 AI 骨架 (佔 7 欄) -->
-            <div class="lg:col-span-7 bg-white rounded-3xl shadow-xl p-5 flex flex-col justify-between border border-gray-200">
-                <div>
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="font-bold text-gray-800 text-base flex items-center gap-2">
-                            📹 長輩運動即時畫面 <span class="text-xs text-gray-400 font-normal">(已隱藏眼、鼻、嘴骨架)</span>
-                        </h2>
-                        <button onclick="toggleCamera()" id="cam-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2 px-4 rounded-xl transition shadow">
-                            開啟鏡頭
-                        </button>
-                    </div>
-
-                    <!-- 放大的視訊鏡頭區域 -->
-                    <div class="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden shadow-inner flex items-center justify-center border-2 border-gray-100">
-                        <video id="webcam" class="absolute inset-0 w-full h-full object-cover transform -scale-x-100" autoplay playsinline></video>
-                        <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover transform -scale-x-100"></canvas>
-                        <div id="cam-placeholder" class="absolute text-gray-400 text-sm text-center p-6">
-                            請點擊右上角「開啟鏡頭」以開啟大視訊與身體 AI 骨架
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 即時伸展數據 -->
-                <div class="grid grid-cols-2 gap-4 mt-4">
-                    <div class="bg-amber-50 p-3 rounded-2xl text-center border border-amber-100">
-                        <span class="text-gray-500 text-xs font-bold block mb-1">目前雙臂伸展幅度</span>
-                        <span id="live-width" class="text-3xl font-black text-amber-600">0</span>
-                        <span class="text-xs text-gray-500"> 單位</span>
-                    </div>
-                    <div class="bg-emerald-50 p-3 rounded-2xl text-center border border-emerald-100">
-                        <span class="text-gray-500 text-xs font-bold block mb-1">今日平均表現</span>
-                        <span id="avg-width-display" class="text-3xl font-black text-emerald-600">0</span>
-                        <span class="text-xs text-gray-500"> 平均</span>
-                    </div>
-                </div>
+            <!-- 視訊鏡頭與畫布 -->
+            <video id="webcam" class="absolute inset-0 w-full h-full object-cover transform -scale-x-100" autoplay playsinline></video>
+            <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover transform -scale-x-100"></canvas>
+            
+            <!-- 完美跟隨放大的站位對位框 -->
+            <div id="alignment-box" class="absolute w-[40%] h-[70%] border-4 border-dashed border-amber-400 rounded-3xl pointer-events-none flex flex-col items-center justify-between p-4 transition-all duration-300 z-10">
+                <span class="bg-black/70 text-amber-300 text-xs font-bold px-3 py-1 rounded-full shadow">請將身體保持在框內</span>
+                <span id="align-instruction" class="bg-amber-500 text-gray-900 text-xs font-bold px-3 py-1 rounded-xl shadow text-center">請點擊右上方按鈕開始</span>
             </div>
 
-            <!-- 右側：運動控制、項目選單與倒數計時 (佔 5 欄) -->
-            <div class="lg:col-span-5 bg-white rounded-3xl shadow-xl p-6 flex flex-col justify-between border border-gray-200">
-                
-                <div>
-                    <!-- 運動項目選單 -->
-                    <div class="mb-6">
-                        <label class="block text-xs font-bold text-gray-500 mb-2">選擇伸展運動項目：</label>
-                        <select id="exercise-select" onchange="changeExercise()" class="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-2xl font-bold text-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm">
-                            <option value="0">1. 手臂向上順時針繞圈</option>
-                            <option value="1">2. 雙臂水平擴胸開合</option>
-                            <option value="2">3. 雙手交替向上舉高</option>
-                            <option value="3">4. 擴胸深呼吸與手臂外展</option>
-                        </select>
-                    </div>
+            <!-- 站位停留3秒準備倒數遮罩 -->
+            <div id="ready-overlay" class="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-white hidden z-30">
+                <span class="text-xl font-bold mb-3">站位正確！請保持不動，準備開始...</span>
+                <div id="ready-countdown" class="text-9xl font-black text-emerald-400 animate-bounce">3</div>
+            </div>
 
-                    <!-- 當前運動與倒數 -->
-                    <div class="text-center py-4 bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100 mb-6">
-                        <span id="exercise-category" class="text-xs text-emerald-600 font-black tracking-widest uppercase block mb-1">運動項目 1</span>
-                        <h2 id="exercise-title" class="text-2xl font-black text-gray-800 mb-3">手臂向上順時針繞圈</h2>
-                        
-                        <!-- 倒數數字 -->
-                        <div class="text-7xl font-black text-emerald-500 tracking-wider my-2">
-                            <span id="countdown-num">30</span><span class="text-2xl text-gray-400">"</span>
-                        </div>
-                        <p id="action-tip" class="text-xs font-bold text-gray-600 mt-2">
-                            請保持自然呼吸，雙臂向上延伸並輕柔繞圈！
-                        </p>
+            <div id="cam-placeholder" class="absolute text-gray-400 text-base text-center p-6 z-10 bg-gray-900/80 rounded-2xl border border-gray-700">
+                請點擊右上角「開啟鏡頭」以啟用系統
+            </div>
+
+            <!-- ==================== 內嵌於視訊畫面上的浮動控制面板 (右上方紅框位置) ==================== -->
+            <div id="control-panel" class="absolute top-4 right-4 w-80 sm:w-96 bg-gray-900/85 backdrop-blur-md rounded-2xl p-4 border border-gray-700/80 shadow-2xl transition-all duration-500 z-20 flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <span id="exercise-category" class="text-[11px] text-emerald-400 font-black uppercase tracking-wider">運動項目 1</span>
+                    <button onclick="toggleCamera()" id="cam-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 rounded-xl transition shadow">
+                        開啟鏡頭
+                    </button>
+                </div>
+
+                <div>
+                    <select id="exercise-select" onchange="changeExercise()" class="w-full p-2.5 bg-gray-800 border border-gray-600 rounded-xl font-bold text-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner">
+                        <option value="0">1. 手臂向上順時針繞圈（嚴格防偷懶）</option>
+                        <option value="1">2. 雙臂水平擴胸開合（嚴格防偷懶）</option>
+                        <option value="2">3. 雙手交替向上舉高（嚴格防偷懶）</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center justify-between bg-gray-800/80 p-2.5 rounded-xl border border-gray-700">
+                    <div>
+                        <h2 id="exercise-title" class="text-sm font-black text-white">手臂向上順時針繞圈</h2>
+                        <span id="action-tip" class="text-[10px] text-gray-400 line-clamp-1">需畫直徑大於40公分的大圈</span>
+                    </div>
+                    <div class="text-3xl font-black text-emerald-400 tracking-wider">
+                        <span id="countdown-num">30</span><span class="text-xs text-gray-400">"</span>
                     </div>
                 </div>
 
-                <!-- 運動操作控制鈕 -->
-                <div class="space-y-3">
-                    <button onclick="togglePlayPause()" id="play-pause-btn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 px-6 rounded-2xl text-lg transition shadow-lg flex items-center justify-center gap-2">
-                        ▶ 開始本項運動
+                <div class="space-y-2">
+                    <button onclick="manualTriggerStart()" id="play-pause-btn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-black py-2.5 px-4 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-1.5">
+                        ▶ 開始站位校正與運動
                     </button>
                     
-                    <div class="flex gap-3">
-                        <button onclick="prevAction()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm transition">
+                    <div class="flex gap-2">
+                        <button onclick="prevAction()" class="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-bold text-xs transition border border-gray-700">
                             ❮ 上一項
                         </button>
-                        <button onclick="nextAction()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm transition">
+                        <button onclick="nextAction()" class="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-bold text-xs transition border border-gray-700">
                             下一項 ❯
                         </button>
                     </div>
                 </div>
+            </div>
 
+            <!-- ==================== 內嵌於視訊畫面上的即時運動資料表現 (下方紅框位置) ==================== -->
+            <div id="stats-panel" class="absolute bottom-4 left-4 right-4 bg-gray-900/85 backdrop-blur-md rounded-2xl p-3 border border-gray-700/80 shadow-2xl transition-all duration-500 z-20 flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">📊 即時運動資料表現</h3>
+                    <button onclick="toggleFullScreen()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1 rounded-lg text-[11px] font-bold border border-gray-700 transition">
+                        🔍 全螢幕切換
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-gray-800/90 p-2 rounded-xl text-center border border-gray-700">
+                        <span class="text-gray-400 text-[10px] font-bold block">即時狀態</span>
+                        <span id="live-action-status" class="text-xs sm:text-sm font-black text-amber-400">等待開始</span>
+                    </div>
+                    <div class="bg-gray-800/90 p-2 rounded-xl text-center border border-gray-700">
+                        <span id="stat-label-1" class="text-gray-400 text-[10px] font-bold block">30秒有效次數</span>
+                        <span id="stat-value-1" class="text-base sm:text-lg font-black text-blue-400">0 次</span>
+                    </div>
+                    <div class="bg-gray-800/90 p-2 rounded-xl text-center border border-gray-700">
+                        <span id="stat-label-2" class="text-gray-400 text-[10px] font-bold block">運動表現評估</span>
+                        <span id="stat-value-2" class="text-base sm:text-lg font-black text-emerald-400">0.0</span>
+                    </div>
+                </div>
             </div>
 
         </div>
 
     </div>
 
-    <!-- 彈出式日期查詢紀錄對話框 (Modal) -->
-    <div id="record-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 text-center relative">
-            <h3 id="modal-date-title" class="text-lg font-black text-gray-800 mb-2">運動紀錄查詢</h3>
-            <div id="modal-content" class="py-4 my-2 bg-gray-50 rounded-2xl border border-gray-200 text-sm"></div>
+    <!-- 歷史紀錄對話框 -->
+    <div id="record-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-700 text-center relative">
+            <h3 id="modal-date-title" class="text-lg font-black text-white mb-2">運動紀錄查詢</h3>
+            <div id="modal-content" class="py-4 my-2 bg-gray-900 rounded-2xl border border-gray-700 text-sm max-h-60 overflow-y-auto text-left px-4 text-gray-300"></div>
             <button onclick="closeModal()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition mt-2">
                 關閉
             </button>
         </div>
     </div>
 
-    <!-- 語音播報與音效核心 -->
+    <!-- 語音與音效核心 -->
     <script>
         function speakText(text) {
             if ('speechSynthesis' in window) {
@@ -169,30 +173,25 @@
         }
     </script>
 
-    <!-- 核心運動與身體骨架邏輯 -->
+    <!-- 核心邏輯控制 -->
     <script>
-        const STORAGE_KEY = 'elder_noface_records';
+        const STORAGE_KEY = 'elder_overlay_hud_v1';
         
         const exercises = [
             {
                 title: "手臂向上順時針繞圈",
-                desc: "請保持自然呼吸，雙臂向上延伸並輕柔繞圈！",
-                voice: "準備開始手臂向上順時針繞圈，請雙手舉高伸展。"
+                desc: "需畫直徑大於40公分的大圈。若站著不動或晃動，系統絕不計分！",
+                voice: "準備開始手臂繞圈，請將手臂伸展開來畫大圈。"
             },
             {
                 title: "雙臂水平擴胸開合",
-                desc: "雙手向左右兩側大大打開，訓練胸肌與肩膀肌力！",
-                voice: "接下來做雙臂水平擴胸開合，手開得越寬越好喔！"
+                desc: "雙手需大幅度向左右開合超過40公分。若幅度太小則不計次數！",
+                voice: "接下來做雙臂水平擴胸開合，請盡量打開。"
             },
             {
                 title: "雙手交替向上舉高",
-                desc: "左右手輪流向上伸展，拉提肩膀與手臂線條！",
-                voice: "請做雙手交替向上舉高，左右手輪流伸展。"
-            },
-            {
-                title: "擴胸深呼吸與手臂外展",
-                desc: "吸氣時擴胸張開，吐氣放鬆，保持姿勢端正！",
-                voice: "最後一項，擴胸深呼吸與手臂外展，放鬆心情。"
+                desc: "手部需確實向上伸展超過35公分。若高度不足則不計次數！",
+                voice: "請做雙手交替向上舉高。"
             }
         ];
 
@@ -201,16 +200,55 @@
         let camera = null;
         let pose = null;
 
-        let sessionValues = [];
-        let lastRecordTime = 0;
+        let actionCount = 0;
+        let sampleValues = [];
+        let lastActionTime = 0;
         
+        let trackMinX = 9999, trackMaxX = -9999;
+        let trackMinY = 9999, trackMaxY = -9999;
+
         let timeLeft = 30;
         let timerInterval = null;
         let isPlaying = false;
+        
+        let isAligned = false;
+        let alignHoldTime = 0;
+        let isReadying = false;
+        let waitingForCalibration = false;
 
         const videoElement = document.getElementById('webcam');
         const canvasElement = document.getElementById('output_canvas');
         const canvasCtx = canvasElement.getContext('2d');
+
+        function toggleFullScreen() {
+            const container = document.getElementById('video-container');
+            if (!document.fullscreenElement) {
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.webkitRequestFullscreen) {
+                    container.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        // 運動中自動智慧淡化（半透明防干擾，滑鼠移過去可恢復清晰）
+        function setFocusMode(active) {
+            const controlPanel = document.getElementById('control-panel');
+            const statsPanel = document.getElementById('stats-panel');
+            if (active) {
+                controlPanel.classList.add('opacity-25', 'hover:opacity-100');
+                statsPanel.classList.add('opacity-25', 'hover:opacity-100');
+            } else {
+                controlPanel.classList.remove('opacity-25', 'hover:opacity-100');
+                statsPanel.classList.remove('opacity-25', 'hover:opacity-100');
+            }
+        }
 
         function getRecords() {
             const data = localStorage.getItem(STORAGE_KEY);
@@ -228,32 +266,28 @@
 
         function queryDateRecord() {
             const inputDate = document.getElementById('search-date').value;
-            if (!inputDate) {
-                alert('請先選擇日期！');
-                return;
-            }
+            if (!inputDate) { alert('請先選擇日期！'); return; }
 
             const records = getRecords();
-            const record = records[inputDate];
-
+            const dayRecords = records[inputDate];
             const modal = document.getElementById('record-modal');
             const modalTitle = document.getElementById('modal-date-title');
             const modalContent = document.getElementById('modal-content');
 
             modalTitle.innerText = `${inputDate} 運動紀錄`;
-
-            if (record) {
-                modalContent.innerHTML = `
-                    <p class="text-emerald-600 font-black text-lg mb-1">平均伸展幅度：${record.avgWidth} 單位</p>
-                    <p class="text-gray-600 text-xs">運動項目：${record.exercise || '伸展運動'}</p>
-                    <p class="text-gray-500 text-xs mt-1">累積有效動作次數：${record.count} 次</p>
-                `;
+            if (dayRecords && dayRecords.length > 0) {
+                let html = '<ul class="space-y-2 divide-y divide-gray-700">';
+                dayRecords.forEach((rec, idx) => {
+                    html += `<li class="pt-2 ${idx > 0 ? 'pt-2' : ''}">
+                        <p class="font-bold text-emerald-400 text-xs">${rec.exercise}</p>
+                        <p class="text-xs font-black text-gray-200">${rec.label}: <span class="text-blue-400">${rec.value}</span></p>
+                    </li>`;
+                });
+                html += '</ul>';
+                modalContent.innerHTML = html;
             } else {
-                modalContent.innerHTML = `
-                    <p class="text-gray-400 font-bold">該日期尚無運動紀錄</p>
-                `;
+                modalContent.innerHTML = `<p class="text-gray-400 font-bold text-center py-4">該日期尚無運動紀錄</p>`;
             }
-
             modal.classList.remove('hidden');
         }
 
@@ -269,17 +303,103 @@
             document.getElementById('exercise-category').innerText = `運動項目 ${currentIdx + 1}`;
             document.getElementById('exercise-title').innerText = ex.title;
             document.getElementById('action-tip').innerText = ex.desc;
-            
-            timeLeft = 30;
-            document.getElementById('countdown-num').innerText = timeLeft;
-            isPlaying = false;
-            clearInterval(timerInterval);
-            document.getElementById('play-pause-btn').innerText = '▶ 開始本項運動';
 
+            if (currentIdx === 0) {
+                document.getElementById('stat-label-1').innerText = '30秒有效繞圈數';
+                document.getElementById('stat-label-2').innerText = '平均轉速 (轉/秒)';
+            } else {
+                document.getElementById('stat-label-1').innerText = '30秒有效次數';
+                document.getElementById('stat-label-2').innerText = '平均伸展幅度';
+            }
+            
+            resetSession();
             speakText(ex.voice);
         }
 
-        // 初始化 MediaPipe Pose (過濾眼睛 1-6、鼻子 0、嘴巴 9-10 等臉部節點)
+        function resetSession() {
+            timeLeft = 30;
+            actionCount = 0;
+            sampleValues = [];
+            
+            trackMinX = 9999; trackMaxX = -9999;
+            trackMinY = 9999; trackMaxY = -9999;
+
+            document.getElementById('countdown-num').innerText = timeLeft;
+            document.getElementById('stat-value-1').innerText = '0 次';
+            document.getElementById('stat-value-2').innerText = '0.0';
+            document.getElementById('live-action-status').innerText = '等待開始';
+            isPlaying = false;
+            isReadying = false;
+            isAligned = false;
+            alignHoldTime = 0;
+            waitingForCalibration = false;
+            clearInterval(timerInterval);
+            setFocusMode(false);
+            document.getElementById('play-pause-btn').innerText = '▶ 開始站位校正與運動';
+            document.getElementById('ready-overlay').classList.add('hidden');
+            document.getElementById('alignment-box').style.display = 'flex';
+            document.getElementById('alignment-box').style.borderColor = '#fbbf24';
+            document.getElementById('align-instruction').innerText = '請點擊右上方按鈕開始';
+            document.getElementById('align-status-badge').innerText = '請點擊開啟鏡頭';
+            document.getElementById('align-status-badge').className = 'text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full font-bold';
+        }
+
+        function manualTriggerStart() {
+            if (!isCamRunning) {
+                alert('請先點擊右上角「開啟鏡頭」！');
+                speakText('請先開啟鏡頭');
+                return;
+            }
+            waitingForCalibration = true;
+            isAligned = false;
+            alignHoldTime = 0;
+            document.getElementById('alignment-box').style.display = 'flex';
+            speakText('請站在黃色框框內進行定位校正');
+        }
+
+        function startReadySequence() {
+            if (isPlaying || isReadying) return;
+
+            isReadying = true;
+            const overlay = document.getElementById('ready-overlay');
+            const cdNum = document.getElementById('ready-countdown');
+            overlay.classList.remove('hidden');
+            
+            let count = 3;
+            cdNum.innerText = count;
+            speakText('站位校正完成準備開始');
+
+            const readyInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    cdNum.innerText = count;
+                    speakText(count.toString());
+                } else {
+                    clearInterval(readyInterval);
+                    overlay.classList.add('hidden');
+                    isReadying = false;
+                    startActualExercise();
+                }
+            }, 1000);
+        }
+
+        function startActualExercise() {
+            isPlaying = true;
+            waitingForCalibration = false;
+            actionCount = 0;
+            sampleValues = [];
+            
+            trackMinX = 9999; trackMaxX = -9999;
+            trackMinY = 9999; trackMaxY = -9999;
+
+            setFocusMode(true);
+
+            document.getElementById('play-pause-btn').innerText = '❚❚ 運動進行中';
+            document.getElementById('alignment-box').style.display = 'none';
+            speakText(exercises[currentIdx].voice + '開始！');
+            startTimer();
+        }
+
         function initPose() {
             pose = new Pose({
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
@@ -304,62 +424,184 @@
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             
             if (results.poseLandmarks) {
-                // 將 0 到 10 號的臉部節點（眼睛、鼻子、嘴巴、耳朵等頭部特徵）可見度設為 0 進行隱藏
                 const filteredLandmarks = results.poseLandmarks.map((lm, idx) => {
-                    if (idx >= 0 && idx <= 10) {
-                        return { ...lm, visibility: 0 };
-                    }
+                    if (idx >= 0 && idx <= 10) return { ...lm, visibility: 0 };
                     return lm;
                 });
 
-                // 畫出其餘身體骨架（肩膀、手肘、手腕、軀幹、腿部等）
                 drawConnectors(canvasCtx, filteredLandmarks, POSE_CONNECTIONS, {color: '#10b981', lineWidth: 3});
                 drawLandmarks(canvasCtx, filteredLandmarks, {color: '#f59e0b', lineWidth: 1, radius: 5});
 
+                const leftShoulder = results.poseLandmarks[11];
+                const rightShoulder = results.poseLandmarks[12];
                 const leftWrist = results.poseLandmarks[15];
                 const rightWrist = results.poseLandmarks[16];
 
-                if (leftWrist && rightWrist && leftWrist.visibility > 0.6 && rightWrist.visibility > 0.6) {
-                    const dx = leftWrist.x - rightWrist.x;
-                    const dy = leftWrist.y - rightWrist.y;
-                    const distance = Math.round(Math.sqrt(dx * dx + dy * dy) * 200);
+                if (leftShoulder && rightShoulder && leftShoulder.visibility > 0.6 && rightShoulder.visibility > 0.6) {
+                    const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+                    const boxElem = document.getElementById('alignment-box');
+                    const badgeElem = document.getElementById('align-status-badge');
+                    const instElem = document.getElementById('align-instruction');
 
-                    document.getElementById('live-width').innerText = distance;
+                    if (waitingForCalibration && !isPlaying && !isReadying) {
+                        if (shoulderWidth < 0.15) {
+                            boxElem.style.borderColor = '#ef4444';
+                            instElem.innerText = '距離太遠，請往前一步！';
+                            badgeElem.innerText = '請往前站';
+                            badgeElem.className = 'text-xs bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2.5 py-0.5 rounded-full font-bold';
+                            isAligned = false;
+                            alignHoldTime = 0;
+                        } else if (shoulderWidth > 0.40) {
+                            boxElem.style.borderColor = '#ef4444';
+                            instElem.innerText = '距離太近，請往後退一步！';
+                            badgeElem.innerText = '請往後站';
+                            badgeElem.className = 'text-xs bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2.5 py-0.5 rounded-full font-bold';
+                            isAligned = false;
+                            alignHoldTime = 0;
+                        } else {
+                            boxElem.style.borderColor = '#10b981';
+                            instElem.innerText = '✓ 站位距離完美，請保持不動！';
+                            badgeElem.innerText = '校正成功';
+                            badgeElem.className = 'text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-bold';
 
+                            alignHoldTime++;
+                            if (alignHoldTime > 25 && !isAligned) {
+                                isAligned = true;
+                                startReadySequence();
+                            }
+                        }
+                    }
+                }
+
+                if (leftWrist && rightWrist && leftShoulder && rightShoulder && isPlaying) {
+                    const pixelShoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x) * canvasElement.width;
+                    const cmPerPixel = 40.0 / (pixelShoulderWidth > 0 ? pixelShoulderWidth : 1);
                     const now = Date.now();
-                    if (distance > 25 && isPlaying && (now - lastRecordTime > 2500)) {
-                        sessionValues.push(distance);
-                        lastRecordTime = now;
-                        updateAndSaveSession();
+
+                    if (currentIdx === 0) {
+                        const relWristX = (rightWrist.x - rightShoulder.x) * canvasElement.width;
+                        const relWristY = (rightWrist.y - rightShoulder.y) * canvasElement.height;
+
+                        trackMinX = Math.min(trackMinX, relWristX);
+                        trackMaxX = Math.max(trackMaxX, relWristX);
+                        trackMinY = Math.min(trackMinY, relWristY);
+                        trackMaxY = Math.max(trackMaxY, relWristY);
+
+                        const spanX = (trackMaxX - trackMinX) * cmPerPixel;
+                        const spanY = (trackMaxY - trackMinY) * cmPerPixel;
+
+                        if (spanX > 40 && spanY > 40 && (now - lastActionTime > 850)) {
+                            actionCount++;
+                            lastActionTime = now;
+                            document.getElementById('stat-value-1').innerText = actionCount + ' 圈';
+                            document.getElementById('live-action-status').innerText = '✓ 完美有效大圈';
+                            
+                            const elapsedSeconds = 30 - timeLeft;
+                            if (elapsedSeconds > 0) {
+                                document.getElementById('stat-value-2').innerText = (actionCount / elapsedSeconds).toFixed(1) + ' 轉/秒';
+                            }
+                            trackMinX = relWristX; trackMaxX = relWristX;
+                            trackMinY = relWristY; trackMaxY = relWristY;
+                        } else {
+                            if (spanX < 10 && spanY < 10) {
+                                document.getElementById('live-action-status').innerText = '⏸️ 靜止中，請開始畫圈';
+                            } else {
+                                document.getElementById('live-action-status').innerText = '⚠️ 畫圈太小，不予計分！';
+                            }
+                        }
+                    } else if (currentIdx === 1) {
+                        const relLeftX = (leftWrist.x - leftShoulder.x) * canvasElement.width;
+                        const relRightX = (rightWrist.x - rightShoulder.x) * canvasElement.width;
+
+                        trackMinX = Math.min(trackMinX, relLeftX, relRightX);
+                        trackMaxX = Math.max(trackMaxX, relLeftX, relRightX);
+
+                        const spanX = (trackMaxX - trackMinX) * cmPerPixel;
+
+                        if (spanX > 40 && (now - lastActionTime > 1200)) {
+                            actionCount++;
+                            lastActionTime = now;
+                            sampleValues.push(Math.round(spanX));
+                            document.getElementById('stat-value-1').innerText = actionCount + ' 次';
+                            document.getElementById('live-action-status').innerText = '✓ 有效擴胸伸展';
+
+                            const avgSpan = Math.round(sampleValues.reduce((a, b) => a + b, 0) / sampleValues.length);
+                            document.getElementById('stat-value-2').innerText = avgSpan + ' 公分';
+
+                            trackMinX = 9999; trackMaxX = -9999;
+                        } else {
+                            if (spanX < 10) {
+                                document.getElementById('live-action-status').innerText = '⏸️ 靜止中，請開合擴胸';
+                            } else {
+                                document.getElementById('live-action-status').innerText = '⚠️ 幅度太小，不予計分！';
+                            }
+                        }
+                    } else if (currentIdx === 2) {
+                        const shoulderY = (leftShoulder.y + rightShoulder.y) / 2 * canvasElement.height;
+                        const wristY = Math.min(leftWrist.y, rightWrist.y) * canvasElement.height;
+                        const relHeight = Math.max(0, shoulderY - wristY);
+
+                        trackMinY = Math.min(trackMinY, relHeight);
+                        trackMaxY = Math.max(trackMaxY, relHeight);
+
+                        const spanY = (trackMaxY - trackMinY) * cmPerPixel;
+
+                        if (spanY > 35 && (now - lastActionTime > 1200)) {
+                            actionCount++;
+                            lastActionTime = now;
+                            sampleValues.push(Math.round(spanY));
+                            document.getElementById('stat-value-1').innerText = actionCount + ' 次';
+                            document.getElementById('live-action-status').innerText = '✓ 有效舉高伸展';
+
+                            const avgHeight = Math.round(sampleValues.reduce((a, b) => a + b, 0) / sampleValues.length);
+                            document.getElementById('stat-value-2').innerText = avgHeight + ' 公分';
+
+                            trackMinY = 9999; trackMaxY = -9999;
+                        } else {
+                            if (spanY < 10) {
+                                document.getElementById('live-action-status').innerText = '⏸️ 靜止中，請舉高手';
+                            } else {
+                                document.getElementById('live-action-status').innerText = '⚠️ 高度不足，不予計分！';
+                            }
+                        }
                     }
                 }
             }
             canvasCtx.restore();
         }
 
-        function updateAndSaveSession() {
-            if (sessionValues.length === 0) return;
-            const sum = sessionValues.reduce((a, b) => a + b, 0);
-            const avg = Math.round(sum / sessionValues.length);
-
+        function saveFinalSession() {
             const records = getRecords();
             const todayStr = getTodayStr();
+            if (!records[todayStr]) {
+                records[todayStr] = [];
+            }
 
-            records[todayStr] = {
-                avgWidth: avg,
-                count: sessionValues.length,
-                exercise: exercises[currentIdx].title
-            };
+            let entry = {};
+            if (currentIdx === 0) {
+                const finalSpeed = (actionCount / 30).toFixed(1);
+                entry = {
+                    exercise: exercises[currentIdx].title,
+                    label: '30秒有效繞大圈數',
+                    value: `${actionCount} 圈 (平均速率 ${finalSpeed} 轉/秒)`
+                };
+            } else {
+                const avgVal = sampleValues.length > 0 ? Math.round(sampleValues.reduce((a, b) => a + b, 0) / sampleValues.length) : 0;
+                entry = {
+                    exercise: exercises[currentIdx].title,
+                    label: '30秒有效次數與平均幅度',
+                    value: `完成 ${actionCount} 次 (平均幅度 ${avgVal} 公分)`
+                };
+            }
+
+            const existingIndex = records[todayStr].findIndex(item => item.exercise === entry.exercise);
+            if (existingIndex >= 0) {
+                records[todayStr][existingIndex] = entry;
+            } else {
+                records[todayStr].push(entry);
+            }
 
             saveRecords(records);
-            updateUI();
-        }
-
-        function updateUI() {
-            const records = getRecords();
-            const todayStr = getTodayStr();
-            const todayData = records[todayStr] || { avgWidth: 0, count: 0 };
-            document.getElementById('avg-width-display').innerText = todayData.avgWidth;
         }
 
         async function toggleCamera() {
@@ -368,11 +610,8 @@
             if (!isCamRunning) {
                 if (!pose) initPose();
                 camera = new Camera(videoElement, {
-                    onFrame: async () => {
-                        await pose.send({image: videoElement});
-                    },
-                    width: 640,
-                    height: 480
+                    onFrame: async () => { await pose.send({image: videoElement}); },
+                    width: 640, height: 480
                 });
                 await camera.start();
                 isCamRunning = true;
@@ -380,7 +619,8 @@
                 btn.innerText = '關閉鏡頭';
                 btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
                 btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
-                speakText('鏡頭已開啟，身體骨架追蹤中');
+                document.getElementById('align-status-badge').innerText = '已開啟鏡頭';
+                speakText('鏡頭已開啟，請點擊開始按鈕進行定位');
             } else {
                 if (camera) camera.stop();
                 isCamRunning = false;
@@ -388,27 +628,8 @@
                 btn.innerText = '開啟鏡頭';
                 btn.classList.remove('bg-rose-600', 'hover:bg-rose-700');
                 btn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+                document.getElementById('align-status-badge').innerText = '請先開啟鏡頭';
                 speakText('鏡頭已關閉');
-            }
-        }
-
-        function togglePlayPause() {
-            const btn = document.getElementById('play-pause-btn');
-            if (!isPlaying) {
-                if (!isCamRunning) {
-                    alert('請先點擊右上角「開啟鏡頭」以開始 AI 追蹤！');
-                    speakText('請先開啟鏡頭');
-                    return;
-                }
-                isPlaying = true;
-                btn.innerText = '❚❚ 暫停運動';
-                speakText(exercises[currentIdx].voice);
-                startTimer();
-            } else {
-                isPlaying = false;
-                btn.innerText = '▶ 繼續運動';
-                clearInterval(timerInterval);
-                speakText('運動已暫停');
             }
         }
 
@@ -418,17 +639,23 @@
                 if (timeLeft > 0) {
                     timeLeft--;
                     document.getElementById('countdown-num').innerText = timeLeft;
-                    
-                    if (timeLeft === 15) {
-                        speakText('時間已經過了一半，保持呼吸，繼續加油');
-                    }
+                    if (timeLeft === 15) speakText('時間過了一半，保持呼吸，繼續加油');
                 } else {
                     clearInterval(timerInterval);
                     isPlaying = false;
                     playEncourageSound();
-                    document.getElementById('play-pause-btn').innerText = '▶ 開始本項運動';
-                    speakText('太棒了！本項運動完成！');
-                    alert('🎉 恭喜長輩完成本項伸展運動！');
+                    saveFinalSession();
+
+                    setFocusMode(false);
+                    document.getElementById('play-pause-btn').innerText = '▶ 開始站位校正與運動';
+                    
+                    if (currentIdx === 0) {
+                        speakText('太棒了！30秒運動時間到！總共完成' + actionCount + '圈有效大圈！');
+                        alert('🎉 30秒運動結束！總共完成有效大圈：' + actionCount + ' 圈');
+                    } else {
+                        speakText('太棒了！運動時間到！總共完成' + actionCount + '次有效伸展！');
+                        alert('🎉 運動結束！總共完成有效次數：' + actionCount + ' 次');
+                    }
                 }
             }, 1000);
         }
@@ -440,14 +667,13 @@
         }
 
         function nextAction() {
-            currentIdx = (currentIdx + 1) % exercises.length;
+            currentIdx = (currentIdx + 1 + exercises.length) % exercises.length;
             document.getElementById('exercise-select').value = currentIdx;
             changeExercise();
         }
 
         window.onload = function() {
             document.getElementById('search-date').value = getTodayStr();
-            updateUI();
         };
     </script>
 </body>
